@@ -55,7 +55,7 @@ def compute_accelerations_forces_N_T(time, y, hard_coded_values, mp, mw, dw, tim
                     [x_pos - (d_R*np.cos(theta)), y_pos - (d_R*np.sin(theta)), d_R*((x_pos*np.sin(theta))-(y_pos*np.cos(theta))),0]])
         
         da_dt = np.array([[0,0,0,0],
-            [(d_R*np.sin(theta)*theta_dot) + x_dot, -d_R*np.cos(theta) * theta_dot, d_R*( (x_pos*np.cos(theta)*theta_dot) + (y_pos*theta_dot*np.sin(theta)) + (np.sin(theta)* x_dot) - (np.cos(theta)*y_dot)),0]])
+            [(d_R*np.sin(theta)*theta_dot) + x_dot, -d_R*np.cos(theta) * theta_dot + y_dot, d_R*( (x_pos*np.cos(theta)*theta_dot) + (y_pos*theta_dot*np.sin(theta)) + (np.sin(theta)* x_dot) - (np.cos(theta)*y_dot)),0]])
 
         qd = np.array([[x_dot], [y_dot], [theta_dot], [phi_dot]])
         zeros = np.zeros((a.shape[0], a.shape[0]))
@@ -78,14 +78,14 @@ def compute_accelerations_forces_N_T(time, y, hard_coded_values, mp, mw, dw, tim
         normal_force = lambda1
 
         # calculate T 
-        tension = np.sqrt((lambda2 * a[1,0])**2 + (lambda2 * a[1,2])**2)
+        tension = np.sqrt((lambda2 * a[1,0])**2 + (lambda2 * a[1,1])**2)
         
     
     # constraint matrices FOR THE SECOND STAGE
     if state == "swinging":
         a = np.array([[x_pos - (d_R*np.cos(theta)), y_pos - (d_R*np.sin(theta)), d_R*((x_pos*np.sin(theta))-(y_pos*np.cos(theta))),0]])
         
-        da_dt = np.array([[(d_R*np.sin(theta)*theta_dot) + x_dot, -d_R*np.cos(theta) * theta_dot, d_R*( (x_pos*np.cos(theta)*theta_dot) + (y_pos*theta_dot*np.sin(theta)) + (np.sin(theta)* x_dot) - (np.cos(theta)*y_dot)),0]])
+        da_dt = np.array([[(d_R*np.sin(theta)*theta_dot) + x_dot, -d_R*np.cos(theta) * theta_dot + y_dot, d_R*( (x_pos*np.cos(theta)*theta_dot) + (y_pos*theta_dot*np.sin(theta)) + (np.sin(theta)* x_dot) - (np.cos(theta)*y_dot)),0]])
 
         qd = np.array([[x_dot], [y_dot], [theta_dot], [phi_dot]])
         zeros = np.zeros((a.shape[0], a.shape[0]))
@@ -106,7 +106,7 @@ def compute_accelerations_forces_N_T(time, y, hard_coded_values, mp, mw, dw, tim
         normal_force = 0 # once swinging, the normal force should be zero because the arm is no longer pushing on the projectile
 
         # calculate T 
-        tension = np.sqrt((lambda2 * a[0,0])**2 + (lambda2 * a[0,2])**2)
+        tension = np.sqrt((lambda2 * a[0,0])**2 + (lambda2 * a[0,1])**2)
 
     # constraint matrices FOR THE THIRD STAGE
     if state == "flying":
@@ -144,12 +144,16 @@ sliding_to_swinging.terminal = True
 def swinging_to_flying(time, y, hard_coded_values, mp, mw, dw, time_step, normal_force_values, tension_values, state):
     d_R = hard_coded_values["d_R"]
     theta = y[2]
-    x_arm = y[0] - d_R*np.cos(theta)
-    y_arm = y[1] - d_R*np.sin(theta)
+    x_tip = d_R*np.cos(theta)
+    y_tip = d_R*np.sin(theta)
     x_projectile = y[0]
     y_projectile = y[1]
-    k_arm = (y_arm - 0)/(x_arm - 0)
-    k_rope = (y_projectile - y_arm)/(x_projectile - x_arm)
+
+    if abs(x_tip) < 1e-10 or abs(x_projectile - x_tip) < 1e-10:
+        return 1.0
+    
+    k_arm = (y_tip)/(x_tip)
+    k_rope = (y_projectile - y_tip)/(x_projectile - x_tip)
 
     slope_ratio = (abs(k_arm-k_rope) / abs(k_arm))
     slope_ratio_threshold = 0.7
@@ -214,7 +218,7 @@ def sutton(x0, y0, theta0, phi0, time, mp, mw, dw):
                             events=[sliding_to_swinging],
                             args=(hard_coded_values, mp, mw, dw, time_step, normal_force_values, tension_values, state),
                             rtol=1e-12, atol=1e-15)
-    N_current = normal_force_values[-1]
+    
     t_start = solution_sliding.t[-1]
     y0 = solution_sliding.y[:, -1]
     state = "swinging"
@@ -224,7 +228,7 @@ def sutton(x0, y0, theta0, phi0, time, mp, mw, dw):
                             events=[swinging_to_flying],
                             args=(hard_coded_values, mp, mw, dw, time_step, normal_force_values, tension_values, state),
                             rtol=1e-12, atol=1e-15)
-    N_current = normal_force_values[-1]
+    
     t_start = solution_swinging.t[-1]
     y0 = solution_swinging.y[:, -1]
     state = "flying"
@@ -253,5 +257,7 @@ def sutton(x0, y0, theta0, phi0, time, mp, mw, dw):
     N = np.interp(time,ts_raw, normal_forces_raw)
     T = np.interp(time,ts_raw, tension_values_raw)
 
+    
 
+    ### RETURNS THETA AND PHI IN DEGREES NOT RADIANS
     return x, y, theta, phi, N, T
