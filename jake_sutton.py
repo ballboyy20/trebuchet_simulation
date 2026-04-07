@@ -234,8 +234,6 @@ def jake_sutton(x0, y0, theta0, phi0, time, mp, mw, dw):
     theta = []
     phi = []
 
-    raw_solutions = []
-
     x_dot = 0
     y_dot = 0
     theta_dot = 0
@@ -246,59 +244,42 @@ def jake_sutton(x0, y0, theta0, phi0, time, mp, mw, dw):
 
     y0 = [x0, y0, theta0, phi0, x_dot, y_dot, theta_dot, phi_dot]
     state = "sliding"
-
-
-    while t_start < t_end:
-        if state == "sliding":
-            active_events = [sliding_to_swinging]
-        elif state == "swinging":
-            active_events = [swinging_to_flying]
-        else:
-            active_events = []
-
-        solution = solve_ivp(func, 
-                                (t_start, t_end), 
-                                y0,
-                                events=active_events,
-                                args=(hard_coded_values, mp, mw, dw, N_current, time_step, lambda1s, T_values_internal, state),
-                                rtol=1e-12, atol=1e-15)
-
-        # x.append(solution.y[0])
-        # y.append(solution.y[1])
-        # theta.append(solution.y[2])
-        # phi.append(solution.y[3])
-        raw_solutions.append(solution)
-        
-
-        if solution.status == 1: # an event was triggered
-            if state == "sliding":
-                print(f"Transition from sliding to swinging at time {solution.t_events[0][0]:.4f} seconds.")
-                state = "swinging"
-            elif state == "swinging":
-                print(f"Transition from swinging to flying at time {solution.t_events[0][0]:.4f} seconds.")
-                state = "flying"
-            else:
-                print("Simulation reached t_end.")
-                break
-
-            # update initial conditions for the next phase
-            N_current = lambda1s[-1]
-            t_start = solution.t[-1]
-            y0 = solution.y[:, -1]
-            current_lambda1 = calculate_current_lambda1(y0, hard_coded_values, mp, mw, dw, N_current)
-
-        elif solution.status == 0: # this should kill the loop...
-            print("Simulation donzo")
-            break
+    solution_sliding = solve_ivp(func, 
+                            (t_start, t_end), 
+                            y0,
+                            events=[sliding_to_swinging],
+                            args=(hard_coded_values, mp, mw, dw, N_current, time_step, lambda1s, T_values_internal, state),
+                            rtol=1e-12, atol=1e-15)
+    N_current = lambda1s[-1]
+    t_start = solution_sliding.t[-1]
+    y0 = solution_sliding.y[:, -1]
+    state = "swinging"
+    solution_swinging = solve_ivp(func,
+                            (t_start, t_end),
+                            y0,
+                            events=[swinging_to_flying],
+                            args=(hard_coded_values, mp, mw, dw, N_current, time_step, lambda1s, T_values_internal, state),
+                            rtol=1e-12, atol=1e-15)
+    N_current = lambda1s[-1]
+    t_start = solution_swinging.t[-1]
+    y0 = solution_swinging.y[:, -1]
+    state = "flying"
+    solution_flying = solve_ivp(func,
+                            (t_start, t_end),
+                            y0,
+                            args=(hard_coded_values, mp, mw, dw, N_current, time_step, lambda1s, T_values_internal, state),
+                            rtol=1e-12, atol=1e-15)
+    
+    current_lambda1 = calculate_current_lambda1(y0, hard_coded_values, mp, mw, dw, N_current)
             
-        
-    solutions_full = np.concatenate([s.y for s in raw_solutions], axis=1)
-    time_full = np.concatenate([s.t for s in raw_solutions])
+    # concatenate all three phases
+    solutions_full = np.concatenate([solution_sliding.y, solution_swinging.y, solution_flying.y], axis=1)
+    time_full = np.concatenate([solution_sliding.t, solution_swinging.t, solution_flying.t])
 
-    x = np.interp(time, time_full, solutions_full[0])
-    y = np.interp(time, time_full, solutions_full[1])
+    x     = np.interp(time, time_full, solutions_full[0])
+    y     = np.interp(time, time_full, solutions_full[1])
     theta = np.interp(time, time_full, solutions_full[2])
-    phi = np.interp(time, time_full, solutions_full[3])
+    phi   = np.interp(time, time_full, solutions_full[3])
 
     ts_raw, indices = np.unique(time_step, return_index=True)
     lambda1s_raw = np.array(lambda1s)[indices]
