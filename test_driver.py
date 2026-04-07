@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Change this line to match your filename
-from jake_sutton import jake_sutton
+from jake_sutton import sutton
 
 # ---------------------------------------------------------------------
 # Model Parameters
@@ -50,7 +50,7 @@ y0 = -h
 # that file, but this driver function will only call the function called
 # your_last_name().
 
-x, y, theta, phi, N, T = jake_sutton(x0, y0, theta0, phi0, t, mp, mw, dw)
+x, y, theta, phi, N, T = sutton(x0, y0, theta0, phi0, t, mp, mw, dw)
 
 # ---------------------------------------------------------------------
 # Plots
