@@ -21,7 +21,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.animation as animation
-from jake_sutton import sutton
+from sutton import sutton
 
 # ─────────────────────────────────────────────
 # 1.  Simulation parameters (must match driver)
@@ -51,27 +51,7 @@ phi_rad   = np.deg2rad(phi_deg)
 
 slide_end_i = next((i for i in range(1, len(t)) if N[i] <= 0.5), len(t) - 1)
 swing_end_i = next((i for i in range(slide_end_i + 1, len(t)) if T[i] <= 0.5), len(t) - 1)
-# Add this right after your simulation call
-print(f"N max: {N.max():.2f}, N min: {N.min():.2f}")
-print(f"T max: {T.max():.2f}, T min: {T.min():.2f}")
-print(f"N is all zero: {np.all(N == 0)}")
-print(f"T is all zero: {np.all(T == 0)}")
-# Check rope length at phase transition points
-theta_rad_full = np.deg2rad(theta_deg)
 
-rope_length = np.sqrt((x - dr*np.cos(theta_rad_full))**2 + 
-                      (y - dr*np.sin(theta_rad_full))**2)
-
-print(f"Rope length at t=0:              {rope_length[0]:.4f} m (should be {l})")
-print(f"Rope length at slide→swing:      {rope_length[slide_end_i]:.4f} m")
-print(f"Rope length at swing→fly:        {rope_length[swing_end_i]:.4f} m")
-
-plt.plot(t, rope_length)
-plt.axhline(l, color='r', linestyle='--', label=f'l = {l} m')
-plt.ylabel("Rope length (m)")
-plt.xlabel("t (s)")
-plt.legend()
-plt.show()
 
 # ─────────────────────────────────────────────
 # 2.  Phase boundaries (for label colour)

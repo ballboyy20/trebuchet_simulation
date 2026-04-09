@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Change this line to match your filename
-from jake_sutton import sutton
+from sutton import sutton
 
 # ---------------------------------------------------------------------
 # Model Parameters
